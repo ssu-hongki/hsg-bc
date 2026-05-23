@@ -309,9 +309,78 @@
     }
 
     .subgoal-list {
-      columns: 2;
-      column-gap: 36px;
+      list-style: none;
+      counter-reset: subgoal-counter;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px 16px;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .subgoal-list li {
+      counter-increment: subgoal-counter;
+      position: relative;
+      margin: 0;
+      padding: 12px 14px 12px 48px;
+      border-radius: 14px;
+      background: var(--primary-soft);
+      border: 1px solid rgba(76, 120, 168, 0.22);
+      color: var(--primary-dark);
+      font-size: 16px;
+      font-weight: 750;
+      line-height: 1.35;
+    }
+
+    .subgoal-list li::before {
+      content: counter(subgoal-counter);
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: white;
+      font-size: 13px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .llm-result-card {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(135deg, #FFFFFF 0%, #EAF2FB 100%);
+    }
+
+    .llm-result-number {
+      font-size: 64px;
+      line-height: 1;
+      font-weight: 950;
+      color: var(--primary);
+      letter-spacing: -0.06em;
+      margin-bottom: 12px;
+    }
+
+    .llm-result-title {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--primary-dark);
+      margin-bottom: 8px;
+    }
+
+    .llm-result-desc {
       font-size: 15px;
+      color: var(--muted);
+      font-weight: 650;
+      max-width: 420px;
+      margin: 0 auto;
     }
 
     footer {
@@ -336,7 +405,7 @@
       }
 
       .subgoal-list {
-        columns: 1;
+        grid-template-columns: 1fr;
       }
 
       .hero-inner {
@@ -395,7 +464,7 @@
       <div class="grid-3">
         <div class="card">
           <h3>Hierarchical Planning</h3>
-          <p>The LLM planner converts user commands into a structured reference subgoal schema for laboratory manipulation tasks.</p>
+          <p>The LLM planner converts user commands into an executable subgoal schema for laboratory manipulation tasks.</p>
         </div>
         <div class="card">
           <h3>Demonstration Learning</h3>
@@ -425,7 +494,7 @@
         <div class="pipeline-row">
           <div class="pipeline-box">User Command<small>“Mix beaker A and B”</small></div>
           <div class="pipeline-box">LLM Planner<small>In-context learning</small></div>
-          <div class="pipeline-box">Reference Subgoal Schema<small>12 structured steps</small></div>
+          <div class="pipeline-box">Executable Subgoal Schema<small>12 structured steps</small></div>
           <div class="pipeline-box">Low-Level Policy<small>π(a | s, g)</small></div>
           <div class="pipeline-box">SO-101 Execution<small>Joint-level control</small></div>
         </div>
@@ -472,11 +541,11 @@
     </section>
 
     <section id="subgoals">
-      <h2 class="section-title">Reference Subgoal Schema</h2>
+      <h2 class="section-title">Executable Subgoal Schema</h2>
       <p class="section-lead">
-        We describe high-level plans using a <strong>reference subgoal schema</strong>: a reusable template that specifies
-        the intended manipulation flow with roles such as source object, target object, and tool object. In our SO-101
-        demonstration, the source object is instantiated as beaker A, the target as beaker B, and the tool as the stirring stick.
+        We describe high-level plans using an <strong>executable subgoal schema</strong>: a reusable template
+        that defines the physically valid order of laboratory manipulation. The schema represents the task
+        with source object, target object, and tool object roles, and is instantiated for each command by the LLM planner.
       </p>
 
       <div class="card">
@@ -517,7 +586,7 @@
         <div class="card">
           <h3>Subgoal</h3>
           <ul>
-            <li>12-step reference subgoal schema encoded as a one-hot vector</li>
+            <li>12-step executable subgoal schema encoded as a one-hot vector</li>
             <li>Segmented from demonstration timestamps</li>
             <li>Conditioning input for the policy</li>
           </ul>
@@ -537,8 +606,9 @@
     <section id="results">
       <h2 class="section-title">Evaluation Results</h2>
       <p class="section-lead">
-        We evaluate the proposed system over 20 trials with slight object-position perturbations.
-        A trial is considered successful when the required subgoal sequence is completed in order.
+        We evaluate both robot execution performance and LLM planner performance. Robot execution is tested over
+        20 trials with slight object-position perturbations, while the LLM planner is evaluated by checking whether
+        it generates executable subgoal plans under predefined physical constraints.
       </p>
 
       <div class="grid-3">
@@ -563,10 +633,17 @@
           <div class="caption">Execution results over 20 trials. Execution time is reported as mean ± standard deviation.</div>
         </div>
 
-        <div class="card">
+        <div class="card llm-result-card">
           <h3>LLM Planner Evaluation</h3>
-          <img class="figure" src="assets/evaluation_LLM.png" alt="LLM planner evaluation chart" />
-          <div class="caption">LLM planner evaluation result for subgoal decomposition.</div>
+          <div class="llm-result-number">100%</div>
+          <div class="llm-result-title">Executable Plan Accuracy</div>
+          <div class="llm-result-desc">
+            The LLM planner generated executable subgoal plans for all 20 predefined laboratory task instructions
+            under the 12-step executable subgoal schema.
+          </div>
+          <div class="caption">
+            Evaluation was performed using a rule-based validity checker with physical ordering constraints.
+          </div>
         </div>
       </div>
     </section>
@@ -580,7 +657,7 @@
           <ul>
             <li>20 repeated trials</li>
             <li>Slight perturbation of object positions</li>
-            <li>Fixed reference subgoal schema</li>
+            <li>Fixed executable subgoal schema</li>
           </ul>
         </div>
 
