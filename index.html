@@ -114,7 +114,14 @@
     .authors {
       font-size: 16px;
       color: var(--primary-dark);
-      font-weight: 700;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .team-members {
+      font-size: 15px;
+      color: var(--muted);
+      font-weight: 650;
       margin-bottom: 22px;
     }
 
@@ -362,6 +369,7 @@
         <a href="#dataset">Dataset</a>
         <a href="#results">Results</a>
         <a href="#demo">Demo</a>
+        <a href="https://github.com/ssu-hongki/hsg-bc.github.io" target="_blank" rel="noopener">Code</a>
       </div>
     </div>
   </nav>
@@ -371,15 +379,17 @@
       <div class="tag">Laboratory Robot Manipulation Project</div>
       <h1>HSG-BC: Hierarchical Subgoal-Guided Behavior Cloning</h1>
       <p class="subtitle">
-        A project page for an SO-101 laboratory manipulation system that uses LLM-based
-        subgoal planning and behavior cloning-based low-level robot control.
+        A hierarchical framework for laboratory robot manipulation that combines LLM-based
+        subgoal planning with behavior cloning-based low-level robot control.
       </p>
       <div class="authors">Honey Butter Dojjon Mara Tanghulu Team</div>
+      <div class="team-members">Sungmin Kim, Jongmin Kim, Hongki Kim, Jaehyuk Choi, Inno Hwang</div>
       <div class="buttons">
         <a class="button" href="#demo">View Demo</a>
         <a class="button secondary" href="#summary">Summary</a>
         <a class="button secondary" href="#results">Results</a>
         <a class="button secondary" href="#method">Method</a>
+        <a class="button secondary" href="https://github.com/ssu-hongki/hsg-bc.github.io" target="_blank" rel="noopener">Code</a>
       </div>
     </div>
   </header>
@@ -388,12 +398,12 @@
     <section id="summary">
       <h2 class="section-title">Summary</h2>
       <p class="section-lead">
-        We present <strong>HSG-BC</strong>, a hierarchical robot manipulation framework for a simple laboratory task: pouring the contents of one beaker into another and stirring it with a stick. The system separates long-horizon task reasoning from low-level robot control. A high-level LLM planner decomposes a natural-language instruction into discrete subgoals, and a subgoal-conditioned low-level policy predicts robot actions from the current robot state and visual object information.
+        We present <strong>HSG-BC</strong>, a hierarchical framework for laboratory robot manipulation. The system separates high-level task reasoning from low-level robot control: an LLM planner converts natural-language instructions into structured subgoals, while a subgoal-conditioned low-level policy predicts robot actions from the current robot state and visual object information. We instantiate the framework on an SO-101 robot arm for beaker and stirring-tool manipulation.
       </p>
       <div class="grid-3">
         <div class="card">
           <h3>Hierarchical Planning</h3>
-          <p>The LLM planner converts user commands into an 11-step subgoal sequence for the target manipulation scenario.</p>
+          <p>The LLM planner converts user commands into a structured subgoal schema for laboratory manipulation tasks.</p>
         </div>
         <div class="card">
           <h3>Demonstration Learning</h3>
@@ -413,8 +423,11 @@
       </p>
 
       <div class="card" style="margin-bottom: 22px;">
-        <img class="figure" src="assets/figure1.jpeg" alt="System overview diagram placeholder" />
-        <div class="caption">System overview. Replace <code>assets/system_overview.png</code> with the final overview diagram.</div>
+        <div class="video-placeholder">
+          System Overview Figure<br />
+          Add the final overview diagram as <code>assets/system_overview.png</code>
+        </div>
+        <div class="caption">Placeholder for the overall HSG-BC training and inference pipeline diagram.</div>
       </div>
 
       <div class="card pipeline">
@@ -422,7 +435,7 @@
         <div class="pipeline-row">
           <div class="pipeline-box">User Command<small>“Mix beaker A and B”</small></div>
           <div class="pipeline-box">LLM Planner<small>In-context learning</small></div>
-          <div class="pipeline-box">Subgoal Sequence<small>11 discrete labels</small></div>
+          <div class="pipeline-box">Subgoal Schema<small>structured subgoals</small></div>
           <div class="pipeline-box">Low-Level Policy<small>π(a | s, g)</small></div>
           <div class="pipeline-box">SO-101 Execution<small>Joint-level control</small></div>
         </div>
@@ -465,23 +478,23 @@
     </section>
 
     <section id="subgoals">
-      <h2 class="section-title">Subgoal Definition</h2>
+      <h2 class="section-title">Generalized Subgoal Schema</h2>
       <p class="section-lead">
-        Instead of using parameterized subgoals such as <code>move(object, target)</code>, we flatten the target scenario into 11 discrete subgoal labels. This reduces ambiguity in object-target encoding and makes policy conditioning simpler.
+        We describe high-level plans using a <strong>generalized subgoal schema</strong>: a reusable template that specifies the intended manipulation flow with roles such as source object, target object, and tool object. In our SO-101 demonstration, the source object is instantiated as beaker A, the target as beaker B, and the tool as the stirring stick.
       </p>
       <div class="card">
         <ol class="subgoal-list">
-          <li>Pick beaker A</li>
-          <li>Move beaker A to beaker B</li>
-          <li>Pour beaker A into beaker B</li>
-          <li>Move beaker A back</li>
-          <li>Place beaker A</li>
-          <li>Move to stick</li>
-          <li>Pick stick</li>
-          <li>Move stick to beaker B</li>
-          <li>Stir beaker B</li>
-          <li>Move stick back</li>
-          <li>Place stick</li>
+          <li>Pick source object</li>
+          <li>Move source to target</li>
+          <li>Pour source into target</li>
+          <li>Move source back</li>
+          <li>Place source object</li>
+          <li>Move to tool object</li>
+          <li>Pick tool object</li>
+          <li>Move tool to target</li>
+          <li>Stir target</li>
+          <li>Move tool back</li>
+          <li>Place tool object</li>
         </ol>
       </div>
     </section>
@@ -503,8 +516,8 @@
         <div class="card">
           <h3>Subgoal</h3>
           <ul>
-            <li>11-dimensional one-hot vector</li>
-            <li>Manually segmented from demonstration timestamps</li>
+            <li>Subgoal label or schema step encoded as a one-hot vector</li>
+            <li>Segmented from demonstration timestamps</li>
             <li>Conditioning input for the policy</li>
           </ul>
         </div>
@@ -522,7 +535,7 @@
     <section id="results">
       <h2 class="section-title">Evaluation Results</h2>
       <p class="section-lead">
-        We evaluate the proposed system over 20 trials with slight object-position perturbations. A trial is considered successful when all subgoals are completed in sequence. We also leave a separate slot for LLM planner evaluation, where subgoal decomposition performance can be reported.
+        We evaluate the proposed system over 20 trials with slight object-position perturbations. A trial is considered successful when the required subgoal sequence is completed in order. A separate slot is included for LLM planner evaluation, where subgoal decomposition performance can be reported.
       </p>
 
       <div class="grid-3">
@@ -543,13 +556,16 @@
       <div class="grid-2" style="margin-top: 22px;">
         <div class="card">
           <h3>Robot Execution Evaluation</h3>
-          <img class="figure" src="assets/evaluation_results.png" alt="Robot execution evaluation chart" />
+          <img class="figure" src="assets/figure1.jpeg" alt="Robot execution evaluation chart" />
           <div class="caption">Execution results over 20 trials. Execution time is reported as mean ± standard deviation.</div>
         </div>
         <div class="card">
           <h3>LLM Planner Evaluation</h3>
-          <img class="figure" src="assets/llm_planner_results.png" alt="LLM planner evaluation chart placeholder" />
-          <div class="caption">Placeholder for LLM subgoal decomposition evaluation. Replace <code>assets/llm_planner_results.png</code> with the final chart.</div>
+          <div class="video-placeholder">
+            LLM Planner Evaluation Figure<br />
+            Add the final chart as <code>assets/llm_planner_results.png</code>
+          </div>
+          <div class="caption">Placeholder for LLM subgoal decomposition evaluation.</div>
         </div>
       </div>
     </section>
@@ -562,7 +578,7 @@
           <ul>
             <li>20 repeated trials</li>
             <li>Slight perturbation of object positions</li>
-            <li>Fixed 11-step subgoal sequence</li>
+            <li>Fixed generalized subgoal sequence</li>
           </ul>
         </div>
         <div class="card">
@@ -587,7 +603,7 @@
     <section id="demo">
       <h2 class="section-title">Demo Video</h2>
       <p class="section-lead">
-        The demonstration video shows the replay or execution of the subgoal-guided manipulation pipeline. Replace the video file with the final demonstration clip.
+        The demonstration video shows the replay or execution of the subgoal-guided manipulation pipeline. The demonstration video shows the replay or execution of the subgoal-guided manipulation pipeline.
       </p>
       <div class="card">        
         <video class="figure" autoplay loop muted playsinline controls>
@@ -598,21 +614,10 @@
       </div>
     </section>
 
-    <section id="future">
-      <h2 class="section-title">Limitations and Future Work</h2>
-      <div class="card">
-        <ul>
-          <li><strong>Data scale:</strong> more human demonstrations are needed to improve generalization.</li>
-          <li><strong>Vision robustness:</strong> object occlusion during pouring and stirring can degrade visual features.</li>
-          <li><strong>Subgoal automation:</strong> future work includes automatic subgoal segmentation from demonstrations.</li>
-          <li><strong>Closed-loop execution:</strong> improved feedback control can make the system more robust to position shifts.</li>
-        </ul>
-      </div>
-    </section>
   </main>
 
   <footer>
-    HSG-BC Project Page · Laboratory Robot Manipulation with SO-101
+    HSG-BC Project Page · Laboratory Robot Manipulation with SO-101 · Honey Butter Dojjon Mara Tanghulu Team
   </footer>
 </body>
 </html>
