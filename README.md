@@ -1,1 +1,1 @@
-# hsg-bc.github.io
+# HSG-BC
