@@ -15,6 +15,7 @@ https://ssu-hongki.github.io/hsg-bc/
 │   ├── figure1.jpeg
 │   ├── video1.mp4
 │   └── evaluation_results.png
+│   └── evaluation_LLM.png
 └── code/
     ├── record_teleop.py
     ├── postprocess_lerobot_dataset.py
