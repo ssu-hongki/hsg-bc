@@ -314,20 +314,6 @@
       font-size: 15px;
     }
 
-    .video-placeholder {
-      height: 360px;
-      border-radius: 20px;
-      background: linear-gradient(135deg, #DCEBFA, #FFFFFF);
-      border: 1px dashed rgba(76, 120, 168, 0.55);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--primary-dark);
-      font-weight: 900;
-      text-align: center;
-      padding: 20px;
-    }
-
     footer {
       border-top: 1px solid var(--line);
       padding: 30px 24px;
@@ -359,6 +345,7 @@
     }
   </style>
 </head>
+
 <body>
   <nav class="nav">
     <div class="nav-inner">
@@ -369,7 +356,7 @@
         <a href="#dataset">Dataset</a>
         <a href="#results">Results</a>
         <a href="#demo">Demo</a>
-        <a href="https://github.com/ssu-hongki/hsg-bc.github.io" target="_blank" rel="noopener">Code</a>
+        <a href="https://github.com/ssu-hongki/hsg-bc" target="_blank" rel="noopener">Code</a>
       </div>
     </div>
   </nav>
@@ -389,7 +376,7 @@
         <a class="button secondary" href="#summary">Summary</a>
         <a class="button secondary" href="#results">Results</a>
         <a class="button secondary" href="#method">Method</a>
-        <a class="button secondary" href="https://github.com/ssu-hongki/hsg-bc.github.io" target="_blank" rel="noopener">Code</a>
+        <a class="button secondary" href="https://github.com/ssu-hongki/hsg-bc" target="_blank" rel="noopener">Code</a>
       </div>
     </div>
   </header>
@@ -398,12 +385,17 @@
     <section id="summary">
       <h2 class="section-title">Summary</h2>
       <p class="section-lead">
-        We present <strong>HSG-BC</strong>, a hierarchical framework for laboratory robot manipulation. The system separates high-level task reasoning from low-level robot control: an LLM planner converts natural-language instructions into structured subgoals, while a subgoal-conditioned low-level policy predicts robot actions from the current robot state and visual object information. We instantiate the framework on an SO-101 robot arm for beaker and stirring-tool manipulation.
+        We present <strong>HSG-BC</strong>, a hierarchical framework for laboratory robot manipulation.
+        The system separates high-level task reasoning from low-level robot control: an LLM planner converts
+        natural-language instructions into structured subgoals, while a subgoal-conditioned low-level policy
+        predicts robot actions from the current robot state and visual object information. We instantiate the
+        framework on an SO-101 robot arm for beaker and stirring-tool manipulation.
       </p>
+
       <div class="grid-3">
         <div class="card">
           <h3>Hierarchical Planning</h3>
-          <p>The LLM planner converts user commands into a structured subgoal schema for laboratory manipulation tasks.</p>
+          <p>The LLM planner converts user commands into a structured reference subgoal schema for laboratory manipulation tasks.</p>
         </div>
         <div class="card">
           <h3>Demonstration Learning</h3>
@@ -419,7 +411,8 @@
     <section id="overview">
       <h2 class="section-title">System Overview</h2>
       <p class="section-lead">
-        The overall system consists of two connected pipelines: a training pipeline that builds a human demonstration dataset, and an inference pipeline that executes LLM-generated subgoals using a learned low-level policy.
+        The overall system consists of two connected pipelines: a training pipeline that builds a human demonstration dataset,
+        and an inference pipeline that executes LLM-generated subgoals using a learned low-level policy.
       </p>
 
       <div class="card" style="margin-bottom: 22px;">
@@ -432,10 +425,11 @@
         <div class="pipeline-row">
           <div class="pipeline-box">User Command<small>“Mix beaker A and B”</small></div>
           <div class="pipeline-box">LLM Planner<small>In-context learning</small></div>
-          <div class="pipeline-box">Subgoal Schema<small>structured subgoals</small></div>
+          <div class="pipeline-box">Reference Subgoal Schema<small>12 structured steps</small></div>
           <div class="pipeline-box">Low-Level Policy<small>π(a | s, g)</small></div>
           <div class="pipeline-box">SO-101 Execution<small>Joint-level control</small></div>
         </div>
+
         <div class="arrow-note">Training Pipeline</div>
         <div class="pipeline-row training-row">
           <div class="pipeline-box">Leader-Follower Teleoperation<small>Human demonstration</small></div>
@@ -449,7 +443,9 @@
     <section id="method">
       <h2 class="section-title">Method</h2>
       <p class="section-lead">
-        We define the proposed method as <strong>HSG-BC</strong>, a hierarchical subgoal-guided behavior cloning framework. The high-level planner generates a subgoal sequence, while the low-level policy predicts robot actions conditioned on the current state and subgoal.
+        We define the proposed method as <strong>HSG-BC</strong>, a hierarchical subgoal-guided behavior cloning framework.
+        The high-level planner generates a subgoal sequence, while the low-level policy predicts robot actions conditioned
+        on the current state and subgoal.
       </p>
 
       <div class="grid-2">
@@ -457,11 +453,12 @@
           <h3>High-Level Planner</h3>
           <ul class="method-list">
             <li><strong>Input:</strong> natural-language task instruction.</li>
-            <li><strong>Output:</strong> a sequence of discrete subgoals.</li>
+            <li><strong>Output:</strong> a sequence of structured subgoals.</li>
             <li><strong>Implementation:</strong> LLM with in-context learning.</li>
             <li><strong>Role:</strong> converts a long-horizon task into executable subgoal steps.</li>
           </ul>
         </div>
+
         <div class="card">
           <h3>Low-Level Policy</h3>
           <ul class="method-list">
@@ -475,23 +472,27 @@
     </section>
 
     <section id="subgoals">
-      <h2 class="section-title">Generalized Subgoal Schema</h2>
+      <h2 class="section-title">Reference Subgoal Schema</h2>
       <p class="section-lead">
-        We describe high-level plans using a <strong>generalized subgoal schema</strong>: a reusable template that specifies the intended manipulation flow with roles such as source object, target object, and tool object. In our SO-101 demonstration, the source object is instantiated as beaker A, the target as beaker B, and the tool as the stirring stick.
+        We describe high-level plans using a <strong>reference subgoal schema</strong>: a reusable template that specifies
+        the intended manipulation flow with roles such as source object, target object, and tool object. In our SO-101
+        demonstration, the source object is instantiated as beaker A, the target as beaker B, and the tool as the stirring stick.
       </p>
+
       <div class="card">
         <ol class="subgoal-list">
+          <li>Move to source object</li>
           <li>Pick source object</li>
           <li>Move source to target</li>
           <li>Pour source into target</li>
           <li>Move source back</li>
-          <li>Place source object</li>
+          <li>Release source object</li>
           <li>Move to tool object</li>
           <li>Pick tool object</li>
           <li>Move tool to target</li>
           <li>Stir target</li>
           <li>Move tool back</li>
-          <li>Place tool object</li>
+          <li>Release tool object</li>
         </ol>
       </div>
     </section>
@@ -499,8 +500,10 @@
     <section id="dataset">
       <h2 class="section-title">Human Demonstration Dataset</h2>
       <p class="section-lead">
-        Demonstrations are collected through leader-follower teleoperation. At each timestep, we record the robot state, the current subgoal label, and the corresponding action.
+        Demonstrations are collected through leader-follower teleoperation. At each timestep, we record the robot state,
+        the current subgoal label, and the corresponding action.
       </p>
+
       <div class="grid-3">
         <div class="card">
           <h3>State</h3>
@@ -510,14 +513,16 @@
             <li>Vision-based object information</li>
           </ul>
         </div>
+
         <div class="card">
           <h3>Subgoal</h3>
           <ul>
-            <li>Subgoal label or schema step encoded as a one-hot vector</li>
+            <li>12-step reference subgoal schema encoded as a one-hot vector</li>
             <li>Segmented from demonstration timestamps</li>
             <li>Conditioning input for the policy</li>
           </ul>
         </div>
+
         <div class="card">
           <h3>Action</h3>
           <ul>
@@ -532,7 +537,8 @@
     <section id="results">
       <h2 class="section-title">Evaluation Results</h2>
       <p class="section-lead">
-        We evaluate the proposed system over 20 trials with slight object-position perturbations. A trial is considered successful when the required subgoal sequence is completed in order. A separate slot is included for LLM planner evaluation, where subgoal decomposition performance can be reported.
+        We evaluate the proposed system over 20 trials with slight object-position perturbations.
+        A trial is considered successful when the required subgoal sequence is completed in order.
       </p>
 
       <div class="grid-3">
@@ -556,25 +562,28 @@
           <img class="figure" src="assets/evaluation_results.png" alt="Robot execution evaluation chart" />
           <div class="caption">Execution results over 20 trials. Execution time is reported as mean ± standard deviation.</div>
         </div>
+
         <div class="card">
           <h3>LLM Planner Evaluation</h3>
-          <img class="figure" src="assets/evaluation_results.png" alt="LLM planner evaluation chart placeholder" />
-          <div class="caption">Temporary placeholder for LLM subgoal decomposition evaluation. Replace this with the final LLM planner result chart later.</div>
+          <img class="figure" src="assets/evaluation_LLM.png" alt="LLM planner evaluation chart" />
+          <div class="caption">LLM planner evaluation result for subgoal decomposition.</div>
         </div>
       </div>
     </section>
 
     <section id="analysis">
       <h2 class="section-title">Analysis and Failure Cases</h2>
+
       <div class="grid-3">
         <div class="card">
           <h3>Test Setting</h3>
           <ul>
             <li>20 repeated trials</li>
             <li>Slight perturbation of object positions</li>
-            <li>Fixed generalized subgoal sequence</li>
+            <li>Fixed reference subgoal schema</li>
           </ul>
         </div>
+
         <div class="card">
           <h3>Main Observation</h3>
           <ul>
@@ -583,6 +592,7 @@
             <li>Replay confirms the overall task flow</li>
           </ul>
         </div>
+
         <div class="card">
           <h3>Failure Cases</h3>
           <ul>
@@ -599,15 +609,15 @@
       <p class="section-lead">
         The demonstration video shows the replay or execution of the subgoal-guided manipulation pipeline.
       </p>
-      <div class="card">        
-        <video class="figure" autoplay loop muted playsinline controls>
-          <source src="assets/video11.mp4" type="video/mp4" />
+
+      <div class="card">
+        <video class="figure" autoplay loop muted playsinline controls preload="auto">
+          <source src="assets/video1.mp4" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         <div class="caption">Demo video: subgoal-guided manipulation with the SO-101 robot arm.</div>
       </div>
     </section>
-
   </main>
 
   <footer>
