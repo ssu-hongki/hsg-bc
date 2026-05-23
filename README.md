@@ -13,7 +13,7 @@ https://ssu-hongki.github.io/hsg-bc/
 ├── index.html
 ├── assets/
 │   ├── figure1.jpeg
-│   ├── video1.mp4
+│   ├── video11.mp4
 │   └── evaluation_results.png
 │   └── evaluation_LLM.png
 └── code/
