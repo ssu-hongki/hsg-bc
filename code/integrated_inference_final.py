@@ -9,6 +9,12 @@ import torch.nn as nn
 from huggingface_hub import InferenceClient
 
 try:
+    import cv2
+    CV2_AVAILABLE = True
+except Exception:
+    CV2_AVAILABLE = False
+
+try:
     from lerobot.robots import make_robot_from_config
     from lerobot.robots.so_follower.config_so_follower import SO100FollowerConfig
     from lerobot.utils.robot_utils import precise_sleep
@@ -23,10 +29,8 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 
-# HF_TOKEN = "PUT_YOUR_HUGGINGFACE_TOKEN_HERE"
-HF_TOKEN = os.getenv("HF_TOKEN") ## Hugging Face Token 넣으시면 됩니다.
+HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_ID = "Qwen/Qwen3-8B"
-
 client = InferenceClient(api_key=HF_TOKEN) if HF_TOKEN else None
 
 
@@ -85,6 +89,14 @@ ACTION_NAMES = [
     "wrist_roll.pos",
     "gripper.pos",
 ]
+
+ARUCO_ID_TO_OBJECT = {
+    1: "beaker_A",
+    2: "beaker_B",
+    3: "stick",
+}
+
+OBJECT_ORDER = ["beaker_A", "beaker_B", "stick"]
 
 SYSTEM_INSTRUCTION = """You are an expert robot manipulation planner for a 6-DoF SO-101 robot arm.
 
@@ -160,27 +172,82 @@ SUBGOAL_LINE_PATTERN = re.compile(
 class MLPLowLevelPolicy(nn.Module):
     def __init__(self, input_dim, output_dim, hidden_dim=256, dropout=0.05):
         super().__init__()
-
         self.net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
-
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
-
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.ReLU(),
-
             nn.Linear(hidden_dim, output_dim),
         )
 
     def forward(self, x):
         return self.net(x)
+
+
+class VisionMemory:
+    def __init__(self):
+        self.memory = {name: [-1.0, -1.0, 0.0] for name in OBJECT_ORDER}
+        self.detector = None
+
+        if CV2_AVAILABLE and hasattr(cv2, "aruco"):
+            aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+            params = cv2.aruco.DetectorParameters()
+            self.detector = cv2.aruco.ArucoDetector(aruco_dict, params)
+
+    def detect(self, frame):
+        detections = {}
+
+        if frame is None or self.detector is None:
+            return detections
+
+        h, w = frame.shape[:2]
+        if h == 0 or w == 0:
+            return detections
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        corners, ids, _ = self.detector.detectMarkers(gray)
+
+        if ids is None:
+            return detections
+
+        ids = ids.flatten()
+        for corner, marker_id in zip(corners, ids):
+            marker_id = int(marker_id)
+            if marker_id not in ARUCO_ID_TO_OBJECT:
+                continue
+
+            name = ARUCO_ID_TO_OBJECT[marker_id]
+            pts = corner.reshape(4, 2)
+            cx, cy = pts.mean(axis=0)
+            detections[name] = (float(cx / w), float(cy / h))
+
+        return detections
+
+    def update(self, frame):
+        detections = self.detect(frame)
+
+        for name in OBJECT_ORDER:
+            if name in detections:
+                x, y = detections[name]
+                self.memory[name] = [x, y, 1.0]
+            else:
+                last_x, last_y, _ = self.memory[name]
+                self.memory[name] = [last_x, last_y, 0.0]
+
+        return self.get_state()
+
+    def get_state(self):
+        out = []
+        for name in OBJECT_ORDER:
+            out.extend(self.memory[name])
+        return np.asarray(out, dtype=np.float32)
 
 
 def parse_subgoal_arguments(arg_str):
@@ -204,7 +271,6 @@ def parse_subgoals(llm_output):
     parsed = []
     for label, arg_str in matches:
         label = label.strip()
-
         if label not in SUBGOAL_TO_INDEX:
             continue
 
@@ -222,7 +288,7 @@ def parse_subgoals(llm_output):
 def generate_robot_plan(user_command):
     if client is None:
         print("[ERROR] HF_TOKEN이 설정되어 있지 않습니다.")
-        print("Windows: set HF_TOKEN=your_token") ## 자신의 hugging face token 넣기
+        print("Windows: set HF_TOKEN=your_token")
         print("Mac/Linux: export HF_TOKEN=your_token")
         return []
 
@@ -349,7 +415,6 @@ def predict_action(model, norm_stats, state_vec, subgoal_idx, device):
         state_vec = state_vec[:expected_state_dim]
 
     subgoal_onehot = make_subgoal_onehot(subgoal_idx, norm_stats["subgoal_dim"])
-
     input_vec = np.concatenate([state_vec, subgoal_onehot], axis=0).astype(np.float32)
 
     if input_vec.shape[0] != norm_stats["input_dim"]:
@@ -358,14 +423,12 @@ def predict_action(model, norm_stats, state_vec, subgoal_idx, device):
         )
 
     input_norm = (input_vec - norm_stats["input_mean"]) / norm_stats["input_std"]
-
     x = torch.tensor(input_norm, dtype=torch.float32).unsqueeze(0).to(device)
 
     with torch.no_grad():
         pred_norm = model(x).cpu().numpy()[0]
 
     pred_action = pred_norm * norm_stats["action_std"] + norm_stats["action_mean"]
-
     return pred_action.astype(np.float32)
 
 
@@ -383,19 +446,20 @@ def get_joint_state_from_obs(obs):
     )
 
 
-def build_state_for_inference(joint_state, norm_stats):
+def build_state_for_inference(joint_state, vision_state, norm_stats):
     joint_state = np.asarray(joint_state, dtype=np.float32).reshape(-1)
+    vision_state = np.asarray(vision_state, dtype=np.float32).reshape(-1)
+    state_vec = np.concatenate([joint_state, vision_state], axis=0)
 
     state_dim = norm_stats["state_dim"]
 
-    if joint_state.shape[0] == state_dim:
-        return joint_state
+    if state_vec.shape[0] < state_dim:
+        pad = np.zeros(state_dim - state_vec.shape[0], dtype=np.float32)
+        state_vec = np.concatenate([state_vec, pad], axis=0)
+    elif state_vec.shape[0] > state_dim:
+        state_vec = state_vec[:state_dim]
 
-    if joint_state.shape[0] < state_dim:
-        vision_dummy = np.zeros(state_dim - joint_state.shape[0], dtype=np.float32)
-        return np.concatenate([joint_state, vision_dummy], axis=0)
-
-    return joint_state[:state_dim]
+    return state_vec.astype(np.float32)
 
 
 def clip_action(pred_action):
@@ -412,42 +476,74 @@ def clip_action(pred_action):
     return pred_action
 
 
-def run_dry(parsed_actions, model, norm_stats, device, stir_seconds):
+def open_camera(camera_index):
+    if camera_index is None:
+        return None
+    if not CV2_AVAILABLE:
+        print("[WARN] OpenCV를 사용할 수 없어 vision state를 초기값으로 유지합니다.")
+        return None
+
+    cap = cv2.VideoCapture(camera_index)
+    if not cap.isOpened():
+        print(f"[WARN] camera index {camera_index}를 열 수 없어 vision state를 초기값으로 유지합니다.")
+        return None
+
+    return cap
+
+
+def read_camera_frame(cap):
+    if cap is None:
+        return None
+    ok, frame = cap.read()
+    if not ok:
+        return None
+    return frame
+
+
+def run_dry(parsed_actions, model, norm_stats, device, stir_seconds, camera_index=None):
     print("\n[DRY-RUN] 가상 제어 루프 시작")
 
     fps = 30
     current_virtual_joints = np.zeros(6, dtype=np.float32)
+    vision_memory = VisionMemory()
+    cap = open_camera(camera_index)
 
-    for act in parsed_actions:
-        subgoal_idx = act["index"]
-        steps_to_run = stir_seconds * fps if subgoal_idx == 9 else DEFAULT_SUBGOAL_STEPS[subgoal_idx]
+    try:
+        for act in parsed_actions:
+            subgoal_idx = act["index"]
+            steps_to_run = stir_seconds * fps if subgoal_idx == 9 else DEFAULT_SUBGOAL_STEPS[subgoal_idx]
 
-        print(f"\n▶️ [DRY-RUN Subgoal {subgoal_idx}] {SUBGOAL_DISPLAY[act['label']]}")
-        print(f"   args: {act['arguments']}")
+            print(f"\n[DRY-RUN Subgoal {subgoal_idx}] {SUBGOAL_DISPLAY[act['label']]}")
+            print(f"args: {act['arguments']}")
 
-        for step in [0, 1, steps_to_run - 1]:
-            if step >= steps_to_run:
-                continue
+            for step in [0, 1, steps_to_run - 1]:
+                if step >= steps_to_run:
+                    continue
 
-            state_vec = build_state_for_inference(current_virtual_joints, norm_stats)
+                frame = read_camera_frame(cap)
+                vision_state = vision_memory.update(frame)
+                state_vec = build_state_for_inference(current_virtual_joints, vision_state, norm_stats)
 
-            pred_action = predict_action(
-                model=model,
-                norm_stats=norm_stats,
-                state_vec=state_vec,
-                subgoal_idx=subgoal_idx,
-                device=device,
-            )
+                pred_action = predict_action(
+                    model=model,
+                    norm_stats=norm_stats,
+                    state_vec=state_vec,
+                    subgoal_idx=subgoal_idx,
+                    device=device,
+                )
 
-            pred_action = clip_action(pred_action)
-            current_virtual_joints = pred_action[:6].astype(np.float32)
+                pred_action = clip_action(pred_action)
+                current_virtual_joints = pred_action[:6].astype(np.float32)
 
-            print(f"   step {step+1:4d}/{steps_to_run:4d} | action={pred_action.round(3)}")
+                print(f"step {step + 1:4d}/{steps_to_run:4d} | action={pred_action.round(3)} | vision={vision_state.round(3)}")
 
-    print("\n[DRY-RUN SUCCESS] 완료")
+        print("\n[DRY-RUN SUCCESS] 완료")
+    finally:
+        if cap is not None:
+            cap.release()
 
 
-def run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port="COM4"):
+def run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port="COM4", camera_index=None):
     if not LEROBOT_AVAILABLE:
         print("[ERROR] LeRobot import 실패. --dry-run 모드로 먼저 확인하세요.")
         return
@@ -455,6 +551,9 @@ def run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port="COM
     robot_cfg = SO100FollowerConfig(port=port)
     robot_cfg.cameras = {}
     robot = make_robot_from_config(robot_cfg)
+
+    vision_memory = VisionMemory()
+    cap = open_camera(camera_index)
 
     print("\n--------------------------------------------------")
     print("[SAFETY] 로봇 시작 전 초기 위치와 주변 장애물을 확인하세요.")
@@ -469,15 +568,13 @@ def run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port="COM
 
     try:
         fps = 30
-        init_obs = robot.get_observation()
-        current_virtual_joints = get_joint_state_from_obs(init_obs)
 
         for act in parsed_actions:
             subgoal_idx = act["index"]
             steps_to_run = stir_seconds * fps if subgoal_idx == 9 else DEFAULT_SUBGOAL_STEPS[subgoal_idx]
 
             print("\n==================================================")
-            print(f"▶️ [Subgoal {subgoal_idx}] {SUBGOAL_DISPLAY[act['label']]}")
+            print(f"[Subgoal {subgoal_idx}] {SUBGOAL_DISPLAY[act['label']]}")
             print(f"args: {act['arguments']}")
             print("==================================================")
 
@@ -486,7 +583,11 @@ def run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port="COM
 
                 obs = robot.get_observation()
                 joint_state = get_joint_state_from_obs(obs)
-                state_vec = build_state_for_inference(joint_state, norm_stats)
+
+                frame = read_camera_frame(cap)
+                vision_state = vision_memory.update(frame)
+
+                state_vec = build_state_for_inference(joint_state, vision_state, norm_stats)
 
                 pred_action = predict_action(
                     model=model,
@@ -497,29 +598,26 @@ def run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port="COM
                 )
 
                 pred_action = clip_action(pred_action)
-                current_virtual_joints = pred_action[:6].astype(np.float32)
-
-                action_dict = {
-                    name: float(val)
-                    for name, val in zip(ACTION_NAMES, pred_action[:6])
-                }
-
+                action_dict = {name: float(val) for name, val in zip(ACTION_NAMES, pred_action[:6])}
                 robot.send_action(action_dict)
 
                 if (step + 1) % 50 == 0 or step == steps_to_run - 1:
                     print(
-                        f"   progress: {step+1:4d}/{steps_to_run:4d} "
-                        f"({(step+1)/steps_to_run*100:5.1f}%)"
+                        f"progress: {step + 1:4d}/{steps_to_run:4d} "
+                        f"({(step + 1) / steps_to_run * 100:5.1f}%) "
+                        f"vision={vision_state.round(3)}"
                     )
 
                 dt_s = time.perf_counter() - start_time
                 precise_sleep(max(1.0 / fps - dt_s, 0.0))
 
-        print("\n🎉 모든 subgoal sequence 완료")
+        print("\n모든 subgoal sequence 완료")
 
     except KeyboardInterrupt:
         print("\n[STOP] 사용자 중단")
     finally:
+        if cap is not None:
+            cap.release()
         robot.disconnect()
         print("로봇 연결 해제 완료")
 
@@ -539,6 +637,13 @@ def main():
         idx = sys.argv.index("--port")
         if idx + 1 < len(sys.argv):
             port = sys.argv[idx + 1]
+            del sys.argv[idx:idx + 2]
+
+    camera_index = None
+    if "--camera" in sys.argv:
+        idx = sys.argv.index("--camera")
+        if idx + 1 < len(sys.argv):
+            camera_index = int(sys.argv[idx + 1])
             del sys.argv[idx:idx + 2]
 
     if len(sys.argv) > 1:
@@ -590,9 +695,9 @@ def main():
     print(f"[INFO] output_dim={norm_stats['output_dim']}")
 
     if dry_run:
-        run_dry(parsed_actions, model, norm_stats, device, stir_seconds)
+        run_dry(parsed_actions, model, norm_stats, device, stir_seconds, camera_index=camera_index)
     else:
-        run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port=port)
+        run_robot(parsed_actions, model, norm_stats, device, stir_seconds, port=port, camera_index=camera_index)
 
 
 if __name__ == "__main__":
