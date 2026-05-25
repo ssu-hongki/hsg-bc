@@ -6,6 +6,14 @@ This repository contains the project page and implementation code for **HSG-BC**
 
 https://ssu-hongki.github.io/hsg-bc/
 
+## Team Roles
+
+- **Sungmin Kim**: Robot control implementation, robot environment setup, user interface construction, and demonstration data collection.
+- **Jongmin Kim**: Vision module development, and demonstration data collection.
+- **Hongki Kim**: MDP formulation, low-level action policy design using behavior cloning, and demonstration data collection.
+- **Jaehyuk Choi**: System pipeline integration, module-level data flow management, and demonstration data collection.
+- **Inho Hwang**: LLM-based planning, MDP formulation, and demonstration data collection.
+
 ## Repository Structure
 
 ```text
