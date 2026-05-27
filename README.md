@@ -27,7 +27,14 @@ https://ssu-hongki.github.io/hsg-bc/
     ├── record_teleop.py
     ├── postprocess_lerobot_dataset.py
     ├── train_mlp_policy_final.py
-    └── integrated_inference_final.py
+    ├── integrated_inference_final.py
+    ├── integrated_inference_withUI.py
+    └── static/
+        ├── Demo.html
+        ├── app.js
+        ├── index.html
+        ├── robot3d.js
+        └── styles.css
 ```
 
 ## Installation
@@ -35,7 +42,7 @@ https://ssu-hongki.github.io/hsg-bc/
 Create a Python environment and install the required packages.
 
 ```bash
-pip install numpy pandas torch pyarrow huggingface_hub
+pip install numpy pandas torch pyarrow huggingface_hub flask flask-cors
 ```
 
 For ArUco marker-based vision processing, install OpenCV contrib.
@@ -56,11 +63,14 @@ Human demonstrations are collected through leader-follower teleoperation.
 python code/record_teleop.py
 ```
 
-This script records SO-101 robot demonstrations using the leader-follower setup.
+This script records SO-101 robot demonstrations using the leader-follower setup. By default, it saves the dataset to `~/data_record`.
+
+> [!IMPORTANT]
+> Since the post-processing script reads from `data_unified` by default, you must move or copy the recorded dataset from `~/data_record` to a folder named `data_unified` in the project root before running the next step.
 
 ### 2. Post-process Demonstrations
 
-After recording, demonstration files are post-processed to attach subgoal labels and build state-subgoal-action tuples.
+After recording and placing the dataset in `data_unified`, run the post-processing script to detect ArUco markers, attach subgoal labels, and build state-subgoal-action tuples.
 
 ```bash
 python code/postprocess_lerobot_dataset.py
@@ -72,7 +82,7 @@ The post-processing step constructs training samples in the following format:
 (state, subgoal, action)
 ```
 
-where `state` includes robot state and visual features, `subgoal` is a one-hot subgoal label, and `action` is the robot joint-level action.
+where `state` includes robot state and visual features, `subgoal` is a one-hot subgoal label, and `action` is the robot joint-level action. The output is saved to `data_processed/`.
 
 ### 3. Train Low-Level Policy
 
@@ -82,11 +92,11 @@ Train the MLP behavior cloning policy.
 python code/train_mlp_policy_final.py
 ```
 
-The policy is trained with MSE loss between the predicted action and the demonstrated action.
+The policy is trained with MSE loss between the predicted action and the demonstrated action. The model checkpoint will be saved to `mlp_low_level_policy_final.pth`.
 
-### 4. Run Integrated Inference
+### 4. Run Integrated Inference (Flask Web Server)
 
-Set the Hugging Face API token as an environment variable.
+Set the Hugging Face API token as an environment variable to use the Qwen LLM planner.
 
 For Windows:
 
@@ -100,19 +110,27 @@ For macOS / Linux:
 export HF_TOKEN=your_huggingface_token
 ```
 
-Run dry-run inference without connecting the robot.
+Run the integrated inference script. This script launches a Flask server.
+
+**For Dry-Run (Simulation/Testing without a physical robot):**
 
 ```bash
-python code/integrated_inference_final.py --dry-run "Pour beaker A into beaker B and stir it with the stick."
+python code/integrated_inference_final.py --dry-run
 ```
 
-Run inference with the SO-101 robot arm.
+**For Real Robot Run (with SO-101 connected):**
 
 ```bash
-python code/integrated_inference_final.py --port COM4 "Pour beaker A into beaker B and stir it with the stick."
+python code/integrated_inference_final.py --port COM4
 ```
 
-Change `COM4` to the correct robot port for your system.
+*(Optional)* You can also specify the camera index with the `--camera <index>` option (default is `0`).
+
+Once the server is running, open your web browser and navigate to:
+```text
+http://localhost:5000
+```
+Use the Web UI to input your natural language commands (e.g., *"비커 A 안에 있는 시약을 비커 B에 붓고, 유리 막대로 5초 동안 섞어줘"*), watch the real-time camera feed, and monitor the robot execution progress.
 
 ## Method Overview
 
