@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>허니버터두쫀마라탕후루</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB', // Blue-600
+                        secondary: '#475569', // Slate-600
+                        background: '#F8FAFC', // Slate-50
+                        surface: '#FFFFFF',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for Performance Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-background text-slate-900 font-sans w-screen overflow-hidden flex flex-col antialiased app-shell">
+    
+    <!-- Toast Notification Area -->
+    <div id="toast-container" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 transition-all"></div>
+
+    <!-- Screen A: Glove Box Selector -->
+    <div id="screen-a" class="flex flex-col h-full w-full transition-opacity duration-300">
+        <!-- Header -->
+        <header class="bg-surface shadow-sm sticky top-0 z-10 px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2 text-primary">
+                <i data-lucide="flask-conical" class="w-6 h-6"></i>
+                <h1 class="text-xl font-bold tracking-tight">허니버터두쫀마라탕후루</h1>
+            </div>
+            <div class="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span class="text-xs font-medium text-green-700">System Online</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 pb-10">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-800">Select Workspace</h2>
+                <p class="text-sm text-slate-500 mb-4">Choose a glove box to connect and control.</p>
+            </div>
+            
+            <!-- Box List Grid -->
+            <div id="box-list" class="grid gap-4">
+                <!-- Dynamically populated by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Screen B: Control & Monitoring -->
+    <div id="screen-b" class="flex flex-col h-full w-full min-h-0 hidden transition-opacity duration-300">
+        <!-- Header -->
+        <header class="bg-surface shadow-sm sticky top-0 z-10 px-2 py-3 flex items-center justify-between">
+            <div class="flex items-center">
+                <button id="btn-back" class="p-2 text-slate-500 hover:text-primary transition-colors hover:bg-slate-100 rounded-full active:bg-slate-200">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </button>
+                <div class="flex flex-col ml-1">
+                    <h1 id="current-box-name" class="text-base font-semibold leading-tight text-slate-800">Glove Box #X</h1>
+                    <span id="current-box-status" class="text-xs text-green-600 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        Connected
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center pr-2 gap-1">
+                <button id="btn-auto-sequence" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 transition-colors rounded-full border border-indigo-200 active:bg-indigo-200 mr-2 shadow-sm" aria-label="Auto Sequence">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    <span>Auto</span>
+                </button>
+                <button id="btn-performance" class="p-2 text-slate-500 hover:text-primary transition-colors rounded-full active:bg-slate-100" aria-label="Performance Graph">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                </button>
+                <button id="btn-snapshot" class="p-2 text-slate-500 hover:text-primary transition-colors rounded-full active:bg-slate-100" aria-label="Take Snapshot">
+                    <i data-lucide="camera" class="w-5 h-5"></i>
+                </button>
+                <button id="btn-settings" class="p-2 text-slate-500 hover:text-primary transition-colors rounded-full active:bg-slate-100" aria-label="Settings">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Operation Video Area -->
+        <div class="px-4 py-4 bg-slate-50 flex-shrink-0 border-b border-slate-200 flex justify-center relative z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)]">
+            <div id="simulation-container" class="relative w-full max-w-4xl aspect-[4/3] sm:aspect-[16/9] bg-[#111827] rounded-2xl overflow-hidden shadow-lg ring-1 ring-slate-900/5">
+                <img
+                    id="operation-video"
+                    class="absolute inset-0 h-full w-full object-cover"
+                    src="/video_feed"
+                    alt="Live Robot Feed"
+                />
+
+                <div class="absolute top-3 left-3 text-white/90 text-[10px] sm:text-xs font-mono select-none px-2 py-1 bg-black/40 backdrop-blur-md rounded-md flex items-center gap-1.5 z-20 shadow-sm border border-white/10 pointer-events-none">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span>
+                    <span id="video-time">LIVE</span>
+                    <span class="ml-2 text-white/50">|</span>
+                    <span class="ml-1 text-white/80 font-sans tracking-wide">Robot Camera</span>
+                </div>
+
+                <div class="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-white/90 backdrop-blur-md pointer-events-none">
+                    <div>
+                        <p class="text-[10px] uppercase tracking-[0.24em] text-cyan-200/80">LLM Command</p>
+                        <p id="operation-command" class="text-xs sm:text-sm font-medium text-white/95 truncate">Standby</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] uppercase tracking-[0.24em] text-emerald-200/80">Execution</p>
+                        <p id="operation-state" class="text-xs sm:text-sm font-semibold text-emerald-300">Idle</p>
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+
+        <!-- System Message / Quick Status Banner -->
+        <div id="robot-status-banner" class="bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center gap-2 text-xs font-medium text-blue-700 shadow-inner hidden transition-all duration-300 h-0 opacity-0 overflow-hidden">
+            <i data-lucide="activity" class="w-3.5 h-3.5 animate-pulse"></i>
+            <span id="robot-status-text">Robot is currently idle.</span>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-hidden relative shadow-[inset_0_4px_6px_-4px_rgba(0,0,0,0.05)]">
+            <!-- Messages Area -->
+            <div id="chat-history" class="flex-1 min-h-0 overflow-y-auto px-4 py-4 pb-24 flex flex-col gap-4 scroll-smooth">
+                <!-- Messages populated by JS -->
+            </div>
+            
+            <!-- Input Area -->
+            <div class="p-3 bg-surface border-t border-slate-200 safe-area-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] relative z-20">
+                <form id="chat-form" class="flex items-end gap-2">
+                    <button type="button" id="btn-mic" class="flex-shrink-0 p-3 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-full transition-colors active:bg-blue-100 bg-slate-50 border border-slate-100">
+                        <i data-lucide="mic" class="w-5 h-5"></i>
+                    </button>
+                    <div class="flex-1 relative bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                        <textarea 
+                            id="chat-input" 
+                            rows="1" 
+                            class="w-full max-h-32 bg-transparent px-4 py-3 text-sm focus:outline-none resize-none custom-scrollbar" 
+                            placeholder="어떤 실험을 도와드릴까요?"></textarea>
+                    </div>
+                    <button type="submit" id="btn-send" class="flex-shrink-0 p-3 bg-primary text-white hover:bg-blue-700 rounded-full transition-all active:bg-blue-800 disabled:bg-slate-300 disabled:text-slate-500 transform active:scale-95 shadow-sm">
+                        <i data-lucide="send" class="w-5 h-5 ml-0.5"></i>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Typing Indicator (Hidden by default) -->
+            <div id="typing-indicator" class="absolute bottom-[92px] left-4 bg-surface px-4 py-2 rounded-full shadow border border-slate-100 opacity-0 transform translate-y-4 transition-all duration-300 flex items-center gap-1 z-10 pointer-events-none">
+                <div class="flex items-center gap-1 opacity-70">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-[bounce_1s_infinite]"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-[bounce_1s_infinite_0.2s]"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-500 animate-[bounce_1s_infinite_0.4s]"></span>
+                </div>
+                <span class="text-xs text-slate-500 font-medium ml-2">LLM Processing...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex-col items-center justify-center transition-opacity opacity-0">
+        <div class="bg-surface w-[90%] max-w-sm rounded-2xl shadow-xl border border-slate-100 p-5 transform transition-transform scale-95">
+            <h2 class="text-lg font-bold text-slate-800 mb-2">Configure LLM Agent</h2>
+            <p class="text-xs text-slate-500 mb-4">Enter your Google Gemini API Key to enable autonomous robotic planning. It is saved only in local storage.</p>
+            
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Gemini API Key</label>
+            <input type="password" id="api-key-input" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mb-4" placeholder="AIzaSy..."/>
+            
+            <div class="flex justify-end gap-2">
+                <button id="btn-settings-cancel" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg transition-colors">Cancel</button>
+                <button id="btn-settings-save" class="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Chart Modal -->
+    <div id="performance-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex-col items-center justify-center transition-opacity opacity-0">
+        <div class="bg-surface w-[95%] max-w-2xl rounded-2xl shadow-xl border border-slate-100 p-5 transform transition-transform scale-95 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 bg-indigo-50 rounded-lg text-indigo-600"><i data-lucide="activity" class="w-5 h-5"></i></div>
+                    <h2 class="text-lg font-bold text-slate-800">Task Performance Metrics</h2>
+                </div>
+                <button id="btn-performance-close" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 w-full bg-slate-50 rounded-xl border border-slate-100 p-4 aspect-[2/1] relative">
+                <canvas id="performance-chart-canvas"></canvas>
+            </div>
+
+            <div class="mt-4 grid grid-cols-3 gap-3">
+                <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                    <p class="text-[10px] uppercase font-bold text-blue-500 mb-1">Success Rate</p>
+                    <p class="text-2xl font-bold text-blue-700">98.4%</p>
+                </div>
+                <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
+                    <p class="text-[10px] uppercase font-bold text-emerald-500 mb-1">Avg Execution Time</p>
+                    <p class="text-2xl font-bold text-emerald-700">12.5s</p>
+                </div>
+                <div class="bg-rose-50/50 p-3 rounded-xl border border-rose-100/50">
+                    <p class="text-[10px] uppercase font-bold text-rose-500 mb-1">Error Frequency</p>
+                    <p class="text-2xl font-bold text-rose-700">1.2%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
